@@ -24,6 +24,7 @@ const Dashboard = () => {
   const [selectedFormType, setSelectedFormType] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [editingForm, setEditingForm] = useState(null)
 
   useEffect(() => {
     const storedData = sessionStorage.getItem('doctorData')
@@ -154,6 +155,21 @@ const Dashboard = () => {
     setShowFormCanvas(false)
     setSelectedFormType(null)
     setSelectedAppointment(null)
+    setEditingForm(null)
+  }
+
+  const handleEditForm = (form) => {
+    // Set up the form for editing
+    setEditingForm(form)
+    setSelectedFormType(form.form_type)
+    setSelectedAppointment({
+      appointment_id: form.appointment_id,
+      patient_id: form.patient_id,
+      patient_name: form.patient_name,
+      doctor_name: doctorData?.name,
+      registration_no: doctorData?.registration_no || ''
+    })
+    setShowFormCanvas(true)
   }
 
   const StatCard = ({ icon: Icon, title, value, change, color }) => (
@@ -479,7 +495,10 @@ const Dashboard = () => {
           )}
 
           {activeTab === 'reports' && (
-            <FormViewer doctorId={doctorData?.doctor_id} />
+            <FormViewer 
+              doctorId={doctorData?.doctor_id} 
+              onEditForm={handleEditForm}
+            />
           )}
 
           {activeTab !== 'overview' && activeTab !== 'appointments' && activeTab !== 'reports' && (
@@ -505,6 +524,7 @@ const Dashboard = () => {
         <MedicalFormCanvas
           formType={selectedFormType}
           appointmentData={selectedAppointment}
+          existingFormData={editingForm}
           onClose={() => setShowFormCanvas(false)}
           onSave={handleFormSaved}
         />

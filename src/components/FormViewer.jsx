@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { X, Download, FileText, Calendar, User, Clock } from 'lucide-react'
+import { X, Download, FileText, Calendar, User, Clock, Edit, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 
-const FormViewer = ({ doctorId, onClose }) => {
+const FormViewer = ({ doctorId, onClose, onEditForm }) => {
   const [forms, setForms] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedForm, setSelectedForm] = useState(null)
@@ -76,6 +76,50 @@ const FormViewer = ({ doctorId, onClose }) => {
     link.click()
   }
 
+  const handlePrint = (form) => {
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank')
+    
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Print Form - ${getFormTypeLabel(form.form_type)}</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+              }
+              img {
+                max-width: 100%;
+                height: auto;
+                display: block;
+              }
+              @media print {
+                body {
+                  margin: 0;
+                }
+                img {
+                  max-width: 100%;
+                  page-break-inside: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${form.form_data}" alt="Medical Form" onload="window.print(); window.onafterprint = function() { window.close(); }" />
+          </body>
+        </html>
+      `)
+      printWindow.document.close()
+    }
+  }
+
   const getFormTypeLabel = (type) => {
     const labels = {
       prescription: 'Prescription',
@@ -111,6 +155,24 @@ const FormViewer = ({ doctorId, onClose }) => {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (onEditForm) {
+                    onEditForm(selectedForm)
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+                Edit
+              </button>
+              <button
+                onClick={() => handlePrint(selectedForm)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                Print
+              </button>
               <button
                 onClick={() => handleDownload(selectedForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-cura-primary text-white rounded-lg hover:bg-cura-secondary transition-colors"

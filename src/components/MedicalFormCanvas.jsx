@@ -4,7 +4,7 @@ import html2canvas from 'html2canvas'
 import { X, Save, RotateCcw, Pen, Eraser } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 
-const MedicalFormCanvas = ({ formType, appointmentData, onClose, onSave }) => {
+const MedicalFormCanvas = ({ formType, appointmentData, existingFormData, onClose, onSave }) => {
   const canvasRef = useRef(null)
   const formContainerRef = useRef(null)
   const [penColor, setPenColor] = useState('#000000')
@@ -27,12 +27,110 @@ const MedicalFormCanvas = ({ formType, appointmentData, onClose, onSave }) => {
     }
     if (formType === 'prescription') {
       fetchMedicines()
+      // Load existing prescribed medicines if editing
+      if (existingFormData && existingFormData.id) {
+        loadExistingMedicines(existingFormData.id)
+      }
     }
     if (formType === 'laboratory') {
       fetchLabTests()
       fetchRadiologyTests()
+      // Load existing prescribed tests if editing
+      if (existingFormData && existingFormData.id) {
+        loadExistingTests(existingFormData.id)
+      }
+    }
+    
+    // Load existing form data if editing
+    if (existingFormData && existingFormData.form_data && canvasRef.current) {
+      loadExistingFormData()
     }
   }, [])
+  
+  const loadExistingFormData = () => {
+    if (!existingFormData || !existingFormData.form_data || !canvasRef.current) return
+    
+    // For prescription and laboratory forms, don't load the old image
+    // because we want to regenerate the template with updated medicines/tests
+    if (formType === 'prescription' || formType === 'laboratory') {
+      console.log('Skipping image load for prescription/laboratory form - will regenerate template')
+      return
+    }
+    
+    const canvas = canvasRef.current.getCanvas()
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+    
+    img.onload = () => {
+      // Clear the canvas first
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      // Draw the existing form image
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    }
+    
+    img.onerror = (err) => {
+      console.error('Error loading existing form image:', err)
+    }
+    
+    img.src = existingFormData.form_data
+  }
+
+  const loadExistingMedicines = async (formId) => {
+    try {
+      const { data, error } = await supabase
+        .from('prescribed_medicines')
+        .select('*')
+        .eq('form_id', formId)
+      
+      if (error) {
+        console.error('Error loading existing medicines:', error)
+        return
+      }
+      
+      if (data && data.length > 0) {
+        // Convert prescribed medicines to the format expected by selectedMedicines
+        const loadedMedicines = data.map(med => ({
+          id: med.medicine_id,
+          name: med.medicine_name,
+          dosage: med.dosage || '',
+          duration: med.duration || '',
+          instructions: med.instructions || ''
+        }))
+        setSelectedMedicines(loadedMedicines)
+        console.log('Loaded existing medicines:', loadedMedicines)
+      }
+    } catch (err) {
+      console.error('Error in loadExistingMedicines:', err)
+    }
+  }
+
+  const loadExistingTests = async (formId) => {
+    try {
+      const { data, error } = await supabase
+        .from('prescribed_tests')
+        .select('*')
+        .eq('form_id', formId)
+      
+      if (error) {
+        console.error('Error loading existing tests:', error)
+        return
+      }
+      
+      if (data && data.length > 0) {
+        // Convert prescribed tests to the format expected by selectedTests
+        const loadedTests = data.map(test => ({
+          id: test.test_id,
+          name: test.test_name,
+          type: test.test_type,
+          price: test.price || 0
+        }))
+        setSelectedTests(loadedTests)
+        console.log('Loaded existing tests:', loadedTests)
+      }
+    } catch (err) {
+      console.error('Error in loadExistingTests:', err)
+    }
+  }
 
   // Update template when medicines change
   useEffect(() => {
@@ -631,73 +729,137 @@ const MedicalFormCanvas = ({ formType, appointmentData, onClose, onSave }) => {
 
       console.log('Saving form with data:', { ...formData, form_data: 'base64_image...' })
 
-      const { data, error } = await supabase
-        .from('medical_forms')
-        .insert([formData])
-        .select()
+      let data, error
+      
+      // Check if we're editing an existing form or creating a new one
+      if (existingFormData && existingFormData.id) {
+        // Update existing form
+        const updateResult = await supabase
+          .from('medical_forms')
+          .update({
+            form_data: imageData
+          })
+          .eq('id', existingFormData.id)
+          .select()
+        
+        data = updateResult.data
+        error = updateResult.error
+        
+        if (!error) {
+          console.log('Form updated successfully:', data)
+        }
+      } else {
+        // Insert new form
+        const insertResult = await supabase
+          .from('medical_forms')
+          .insert([formData])
+          .select()
+        
+        data = insertResult.data
+        error = insertResult.error
+        
+        if (!error) {
+          console.log('Form saved successfully:', data)
+        }
+      }
 
       if (error) {
         console.error('Error saving form:', error)
         alert('Error saving form: ' + error.message)
         return
       }
-
-      console.log('Form saved successfully:', data)
       
-      // Save prescribed medicines if prescription form
-      if (formType === 'prescription' && selectedMedicines.length > 0) {
+      // Handle prescribed medicines for prescription form
+      if (formType === 'prescription') {
         const formId = data[0].id
-        const prescribedMeds = selectedMedicines.map(med => ({
-          form_id: formId,
-          appointment_id: appointmentId ? String(appointmentId) : null,
-          patient_id: patientId ? String(patientId) : null,
-          doctor_id: doctorId ? String(doctorId) : null,
-          medicine_id: med.id,
-          medicine_name: med.name,
-          dosage: med.dosage || '',
-          duration: med.duration || '',
-          instructions: med.instructions || '',
-          created_at: new Date().toISOString()
-        }))
+        
+        // If editing, delete old medicines first
+        if (existingFormData && existingFormData.id) {
+          const { error: deleteError } = await supabase
+            .from('prescribed_medicines')
+            .delete()
+            .eq('form_id', formId)
+          
+          if (deleteError) {
+            console.error('Error deleting old medicines:', deleteError)
+          } else {
+            console.log('Old medicines deleted successfully')
+          }
+        }
+        
+        // Insert new medicines if any
+        if (selectedMedicines.length > 0) {
+          const prescribedMeds = selectedMedicines.map(med => ({
+            form_id: formId,
+            appointment_id: appointmentId ? String(appointmentId) : null,
+            patient_id: patientId ? String(patientId) : null,
+            doctor_id: doctorId ? String(doctorId) : null,
+            medicine_id: med.id,
+            medicine_name: med.name,
+            dosage: med.dosage || '',
+            duration: med.duration || '',
+            instructions: med.instructions || '',
+            created_at: new Date().toISOString()
+          }))
 
-        const { error: medError } = await supabase
-          .from('prescribed_medicines')
-          .insert(prescribedMeds)
+          const { error: medError } = await supabase
+            .from('prescribed_medicines')
+            .insert(prescribedMeds)
 
-        if (medError) {
-          console.error('Error saving prescribed medicines:', medError)
-        } else {
-          console.log('Prescribed medicines saved successfully')
+          if (medError) {
+            console.error('Error saving prescribed medicines:', medError)
+          } else {
+            console.log('Prescribed medicines saved successfully')
+          }
         }
       }
 
-      // Save prescribed tests if laboratory form
-      if (formType === 'laboratory' && selectedTests.length > 0) {
+      // Handle prescribed tests for laboratory form
+      if (formType === 'laboratory') {
         const formId = data[0].id
-        const prescribedTests = selectedTests.map(test => ({
-          form_id: formId,
-          appointment_id: appointmentId ? String(appointmentId) : null,
-          patient_id: patientId ? String(patientId) : null,
-          doctor_id: doctorId ? String(doctorId) : null,
-          test_id: test.id,
-          test_name: test.name,
-          test_type: test.type,
-          price: test.price || 0,
-          created_at: new Date().toISOString()
-        }))
+        
+        // If editing, delete old tests first
+        if (existingFormData && existingFormData.id) {
+          const { error: deleteError } = await supabase
+            .from('prescribed_tests')
+            .delete()
+            .eq('form_id', formId)
+          
+          if (deleteError) {
+            console.error('Error deleting old tests:', deleteError)
+          } else {
+            console.log('Old tests deleted successfully')
+          }
+        }
+        
+        // Insert new tests if any
+        if (selectedTests.length > 0) {
+          const prescribedTests = selectedTests.map(test => ({
+            form_id: formId,
+            appointment_id: appointmentId ? String(appointmentId) : null,
+            patient_id: patientId ? String(patientId) : null,
+            doctor_id: doctorId ? String(doctorId) : null,
+            test_id: test.id,
+            test_name: test.name,
+            test_type: test.type,
+            price: test.price || 0,
+            created_at: new Date().toISOString()
+          }))
 
-        const { error: testError } = await supabase
-          .from('prescribed_tests')
-          .insert(prescribedTests)
+          const { error: testError } = await supabase
+            .from('prescribed_tests')
+            .insert(prescribedTests)
 
-        if (testError) {
-          console.error('Error saving prescribed tests:', testError)
-        } else {
-          console.log('Prescribed tests saved successfully')
+          if (testError) {
+            console.error('Error saving prescribed tests:', testError)
+          } else {
+            console.log('Prescribed tests saved successfully')
+          }
         }
       }
       
-      alert('Form saved successfully!')
+      const successMessage = existingFormData ? 'Form updated successfully!' : 'Form saved successfully!'
+      alert(successMessage)
       onSave && onSave(data)
       onClose()
       
@@ -850,7 +1012,7 @@ const MedicalFormCanvas = ({ formType, appointmentData, onClose, onSave }) => {
             className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cura-primary to-cura-secondary text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save Form'}
+            {isSaving ? (existingFormData ? 'Updating...' : 'Saving...') : (existingFormData ? 'Update Form' : 'Save Form')}
           </button>
         </div>
 
