@@ -23,6 +23,7 @@ const Dashboard = () => {
   const [showFormCanvas, setShowFormCanvas] = useState(false)
   const [selectedFormType, setSelectedFormType] = useState(null)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const storedData = sessionStorage.getItem('doctorData')
@@ -71,16 +72,46 @@ const Dashboard = () => {
       
       if (data && data.length > 0) {
         console.log('Sample appointment columns:', Object.keys(data[0]))
+        console.log('Sample appointment data:', data[0])
+        
+        // Extract patient names from mobile_booking_data JSON field for web app bookings
+        data.forEach((apt, idx) => {
+          // If patient_name is null but mobile_booking_data exists, extract it from JSON
+          if ((!apt.patient_name || apt.patient_name === null) && apt.mobile_booking_data) {
+            try {
+              const bookingData = typeof apt.mobile_booking_data === 'string' 
+                ? JSON.parse(apt.mobile_booking_data) 
+                : apt.mobile_booking_data
+              
+              if (bookingData && bookingData.patient_name) {
+                apt.patient_name = bookingData.patient_name
+                console.log(`Extracted patient name from mobile_booking_data: ${apt.patient_name}`)
+              }
+            } catch (e) {
+              console.error('Error parsing mobile_booking_data:', e)
+            }
+          }
+        })
       }
       
       setAppointments(data || [])
       
       // Calculate stats from appointments
       const today = new Date().toISOString().split('T')[0]
-      const todayAppts = data?.filter(apt => apt.date === today) || []
+      console.log('Today\'s date:', today)
+      
+      const todayAppts = data?.filter(apt => {
+        console.log(`Appointment date: ${apt.date}, matches today: ${apt.date === today}`)
+        return apt.date === today
+      }) || []
+      
+      console.log('Today\'s appointments count:', todayAppts.length)
+      
       const completed = todayAppts.filter(apt => 
         apt.status?.toLowerCase() === 'completed'
       )
+      
+      console.log('Completed today count:', completed.length)
       
       setStats(prev => ({
         ...prev,
@@ -283,16 +314,30 @@ const Dashboard = () => {
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-gray-900">
                       {activeTab === 'overview' ? "Today's Appointments" : 'All Appointments'}
                     </h2>
-                    <button 
-                      onClick={() => setActiveTab('appointments')}
-                      className="text-cura-primary hover:text-cura-secondary font-medium text-sm"
-                    >
-                      View All
-                    </button>
+                    {activeTab === 'overview' && (
+                      <button 
+                        onClick={() => setActiveTab('appointments')}
+                        className="text-cura-primary hover:text-cura-secondary font-medium text-sm"
+                      >
+                        View All
+                      </button>
+                    )}
+                  </div>
+                  <div className="mb-6">
+                    <div className="relative">
+                      <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search by patient name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cura-primary focus:border-transparent outline-none"
+                      />
+                    </div>
                   </div>
                   {loading ? (
                     <div className="flex items-center justify-center py-8">
@@ -302,13 +347,20 @@ const Dashboard = () => {
                     <div className="space-y-3">
                       {appointments
                         .filter(apt => {
+                          // Filter by date for overview tab
                           if (activeTab === 'overview') {
                             const today = new Date().toISOString().split('T')[0]
-                            return apt.date === today
+                            if (apt.date !== today) return false
                           }
+                          
+                          // Filter by search query
+                          if (searchQuery.trim()) {
+                            const patientName = apt.patient_name || ''
+                            return patientName.toLowerCase().includes(searchQuery.toLowerCase())
+                          }
+                          
                           return true
                         })
-                        .slice(0, activeTab === 'overview' ? 4 : appointments.length)
                         .map((apt, index) => (
                           <AppointmentCard
                             key={apt.appointment_id || index}
@@ -334,10 +386,28 @@ const Dashboard = () => {
 
           {activeTab === 'appointments' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">All Appointments</h2>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Total: {appointments.length}</span>
+                  <span className="text-sm text-gray-600">Total: {appointments.filter(apt => {
+                    if (searchQuery.trim()) {
+                      const patientName = apt.patient_name || ''
+                      return patientName.toLowerCase().includes(searchQuery.toLowerCase())
+                    }
+                    return true
+                  }).length}</span>
+                </div>
+              </div>
+              <div className="mb-6">
+                <div className="relative">
+                  <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search by patient name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cura-primary focus:border-transparent outline-none"
+                  />
                 </div>
               </div>
               {loading ? (
@@ -346,7 +416,16 @@ const Dashboard = () => {
                 </div>
               ) : appointments.length > 0 ? (
                 <div className="space-y-3">
-                  {appointments.map((apt, index) => (
+                  {appointments
+                    .filter(apt => {
+                      // Filter by search query
+                      if (searchQuery.trim()) {
+                        const patientName = apt.patient_name || ''
+                        return patientName.toLowerCase().includes(searchQuery.toLowerCase())
+                      }
+                      return true
+                    })
+                    .map((apt, index) => (
                     <div key={apt.appointment_id || index} className="flex items-center justify-between p-5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
                       <div className="flex items-center gap-4 flex-1">
                         <div className="w-14 h-14 bg-gradient-to-br from-cura-primary to-cura-secondary rounded-full flex items-center justify-center text-white font-semibold text-lg">
