@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { 
   Users, Calendar, Activity, FileText, LogOut, Menu, X,
   Bell, Search, Clock, TrendingUp, UserCheck, Stethoscope,
-  ClipboardList, Settings, Home, FilePlus
+  ClipboardList, Settings, Home, FilePlus, DollarSign
 } from 'lucide-react'
 import { supabase } from '../lib/supabaseClient'
 import FormSelector from './FormSelector'
 import MedicalFormCanvas from './MedicalFormCanvas'
 import FormViewer from './FormViewer'
+import BillingDashboard from './BillingDashboard'
+import PatientsList from './PatientsList'
 
 const Dashboard = () => {
   const [doctorData, setDoctorData] = useState(null)
@@ -173,58 +175,62 @@ const Dashboard = () => {
   }
 
   const StatCard = ({ icon: Icon, title, value, change, color }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-          {change && (
-            <p className="text-sm text-green-600 mt-2 flex items-center gap-1">
-              <TrendingUp className="w-4 h-4" />
-              {change}
-            </p>
-          )}
+    <div className="group bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent to-gray-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`p-3 rounded-xl ${color} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+            <Icon className="w-7 h-7 text-white" />
+          </div>
         </div>
-        <div className={`p-4 rounded-full ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
+        <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">{title}</p>
+        <p className="text-4xl font-bold text-gray-900 mb-2">{value}</p>
+        {change && (
+          <p className="text-sm text-green-600 font-medium flex items-center gap-1">
+            <TrendingUp className="w-4 h-4" />
+            {change}
+          </p>
+        )}
       </div>
     </div>
   )
 
   const AppointmentCard = ({ patient, time, type, status, appointmentData, showActions = false }) => (
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+    <div className="group flex items-center justify-between p-5 bg-white rounded-xl border border-gray-200 hover:border-cura-primary hover:shadow-xl transition-all duration-300 cursor-pointer">
       <div className="flex items-center gap-4 flex-1">
-        <div className="w-12 h-12 bg-gradient-to-br from-cura-primary to-cura-secondary rounded-full flex items-center justify-center text-white font-semibold">
-          {patient.charAt(0)}
+        <div className="relative">
+          <div className="w-14 h-14 bg-gradient-to-br from-cura-primary to-cura-secondary rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 transition-transform duration-300">
+            {patient.charAt(0)}
+          </div>
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
         </div>
         <div className="flex-1">
-          <p className="font-semibold text-gray-900">{patient}</p>
-          <p className="text-sm text-gray-600 flex items-center gap-1">
+          <p className="font-bold text-gray-900 text-lg group-hover:text-cura-primary transition-colors">{patient}</p>
+          <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
             <Clock className="w-4 h-4" />
             {time}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {showActions && (
           <button
             onClick={() => handleCreateForm(appointmentData)}
-            className="flex items-center gap-2 px-3 py-2 bg-cura-primary text-white rounded-lg hover:bg-cura-secondary transition-colors text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cura-primary to-cura-secondary text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-300 text-sm font-semibold"
           >
             <FilePlus className="w-4 h-4" />
             Create Form
           </button>
         )}
         <div className="text-right">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+          <span className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm ${
             status === 'completed' ? 'bg-green-100 text-green-700' :
             status === 'ongoing' ? 'bg-blue-100 text-blue-700' :
             'bg-yellow-100 text-yellow-700'
           }`}>
-            {status}
+            {status.toUpperCase()}
           </span>
-          <p className="text-sm text-gray-600 mt-1">{type}</p>
+          <p className="text-sm text-gray-500 mt-2 font-medium">{type}</p>
         </div>
       </div>
     </div>
@@ -233,18 +239,17 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-gray-200 transition-all duration-300 flex flex-col`}>
-        <div className="p-6 border-b border-gray-200">
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gradient-to-b from-white to-gray-50 border-r border-gray-200 shadow-xl transition-all duration-300 flex flex-col`}>
+        <div className="p-6 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
-            {sidebarOpen && (
-              <div>
-                <h2 className="text-xl font-bold text-cura-primary">Cura Hospitals</h2>
-                <p className="text-xs text-gray-600">Doctor Portal</p>
-              </div>
-            )}
+            <img 
+              src="/cmhlogo.png" 
+              alt="Cura Hospitals Logo" 
+              className={`object-contain transition-all duration-300 hover:scale-110 ${sidebarOpen ? 'w-24 h-24' : 'w-12 h-12 mx-auto'}`}
+            />
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gradient-to-br hover:from-cura-primary hover:to-cura-secondary hover:text-white rounded-xl transition-all duration-300 shadow-sm hover:shadow-lg"
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -255,56 +260,60 @@ const Dashboard = () => {
           {[
             { id: 'overview', icon: Home, label: 'Overview' },
             { id: 'appointments', icon: Calendar, label: 'Appointments' },
+            { id: 'patients', icon: Users, label: 'Patients' },
+            { id: 'billing', icon: DollarSign, label: 'Billing' },
             { id: 'reports', icon: FileText, label: 'Reports' },
           ].map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              className={`group w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                 activeTab === item.id
-                  ? 'bg-gradient-to-r from-cura-primary to-cura-secondary text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-cura-primary to-cura-secondary text-white shadow-lg scale-105'
+                  : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 hover:scale-105 hover:shadow-md'
               }`}
             >
-              <item.icon className="w-5 h-5" />
-              {sidebarOpen && <span className="font-medium">{item.label}</span>}
+              <item.icon className={`w-5 h-5 transition-transform duration-300 ${
+                activeTab === item.id ? '' : 'group-hover:scale-110'
+              }`} />
+              {sidebarOpen && <span className="font-semibold">{item.label}</span>}
             </button>
           ))}
         </nav>
 
         <div className="p-4 border-t border-gray-200">
           <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center'}`}>
-            <div className="w-10 h-10 bg-gradient-to-br from-cura-primary to-cura-secondary rounded-full flex items-center justify-center text-white font-semibold">
+            <div className="w-12 h-12 bg-gradient-to-br from-cura-primary to-cura-secondary rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg hover:scale-110 transition-transform duration-300">
               {doctorData?.name?.charAt(0) || 'D'}
             </div>
             {sidebarOpen && (
               <div className="flex-1">
-                <p className="font-semibold text-gray-900 text-sm">{doctorData?.name || 'Doctor'}</p>
-                <p className="text-xs text-gray-600">{doctorData?.department || 'Department'}</p>
+                <p className="font-bold text-gray-900 text-sm">{doctorData?.name || 'Doctor'}</p>
+                <p className="text-xs text-gray-500 font-medium">{doctorData?.department || 'Department'}</p>
               </div>
             )}
           </div>
           {sidebarOpen && (
             <button
               onClick={handleLogout}
-              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+              className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition-all duration-300"
             >
               <LogOut className="w-4 h-4" />
-              <span className="text-sm font-medium">Logout</span>
+              <span className="text-sm font-bold">Logout</span>
             </button>
           )}
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <header className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-10">
+      <main className="flex-1 overflow-auto bg-gradient-to-br from-gray-50 to-blue-50">
+        <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200 px-8 py-6 sticky top-0 z-10 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Welcome back, Dr. {doctorData?.name?.split(' ').pop() || 'Doctor'}!
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-cura-primary to-cura-secondary bg-clip-text text-transparent">
+                Welcome back, Dr. {doctorData?.name?.split(' ').pop() || 'Doctor'}! 👋
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-500 mt-2 font-medium">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
@@ -329,7 +338,7 @@ const Dashboard = () => {
                 />
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-gray-900">
                       {activeTab === 'overview' ? "Today's Appointments" : 'All Appointments'}
@@ -345,13 +354,13 @@ const Dashboard = () => {
                   </div>
                   <div className="mb-6">
                     <div className="relative">
-                      <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                      <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
                       <input
                         type="text"
                         placeholder="Search by patient name..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cura-primary focus:border-transparent outline-none"
+                        className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-cura-primary focus:border-cura-primary outline-none transition-all duration-300 shadow-sm hover:shadow-md"
                       />
                     </div>
                   </div>
@@ -401,9 +410,9 @@ const Dashboard = () => {
           )}
 
           {activeTab === 'appointments' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900">All Appointments</h2>
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-cura-primary to-cura-secondary bg-clip-text text-transparent">All Appointments</h2>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Total: {appointments.filter(apt => {
                     if (searchQuery.trim()) {
@@ -416,13 +425,13 @@ const Dashboard = () => {
               </div>
               <div className="mb-6">
                 <div className="relative">
-                  <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Search by patient name..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cura-primary focus:border-transparent outline-none"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-cura-primary focus:border-cura-primary outline-none transition-all duration-300 shadow-sm hover:shadow-md"
                   />
                 </div>
               </div>
@@ -442,13 +451,16 @@ const Dashboard = () => {
                       return true
                     })
                     .map((apt, index) => (
-                    <div key={apt.appointment_id || index} className="flex items-center justify-between p-5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200">
+                    <div key={apt.appointment_id || index} className="group flex items-center justify-between p-5 bg-white rounded-xl border-2 border-gray-200 hover:border-cura-primary hover:shadow-xl transition-all duration-300">
                       <div className="flex items-center gap-4 flex-1">
-                        <div className="w-14 h-14 bg-gradient-to-br from-cura-primary to-cura-secondary rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                        <div className="relative">
+                        <div className="w-16 h-16 bg-gradient-to-br from-cura-primary to-cura-secondary rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
                           {apt.patient_name?.charAt(0) || 'P'}
                         </div>
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white"></div>
+                        </div>
                         <div className="flex-1">
-                          <p className="font-semibold text-gray-900 text-lg">{apt.patient_name || `Patient ${apt.patient_id}`}</p>
+                          <p className="font-bold text-gray-900 text-lg group-hover:text-cura-primary transition-colors">{apt.patient_name || `Patient ${apt.patient_id}`}</p>
                           <div className="flex items-center gap-4 mt-1">
                             <p className="text-sm text-gray-600 flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
@@ -465,19 +477,19 @@ const Dashboard = () => {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => handleCreateForm(apt)}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cura-primary to-cura-secondary text-white rounded-lg hover:shadow-lg transition-all"
+                          className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-cura-primary to-cura-secondary text-white rounded-xl hover:shadow-xl hover:scale-105 transition-all duration-300 font-semibold"
                         >
-                          <FilePlus className="w-4 h-4" />
+                          <FilePlus className="w-5 h-5" />
                           Create Form
                         </button>
                         <div className="text-right">
-                          <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                          <span className={`px-5 py-2 rounded-xl text-sm font-bold shadow-sm ${
                             apt.status?.toLowerCase() === 'completed' ? 'bg-green-100 text-green-700' :
                             apt.status?.toLowerCase() === 'ongoing' ? 'bg-blue-100 text-blue-700' :
                             apt.status?.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-700' :
                             'bg-yellow-100 text-yellow-700'
                           }`}>
-                            {apt.status || 'Scheduled'}
+                            {(apt.status || 'Scheduled').toUpperCase()}
                           </span>
                         </div>
                       </div>
@@ -494,6 +506,16 @@ const Dashboard = () => {
             </div>
           )}
 
+          {activeTab === 'patients' && (
+            <PatientsList />
+          )}
+
+          {activeTab === 'billing' && (
+            <BillingDashboard 
+              doctorId={doctorData?.doctor_id}
+            />
+          )}
+
           {activeTab === 'reports' && (
             <FormViewer 
               doctorId={doctorData?.doctor_id} 
@@ -501,7 +523,7 @@ const Dashboard = () => {
             />
           )}
 
-          {activeTab !== 'overview' && activeTab !== 'appointments' && activeTab !== 'reports' && (
+          {activeTab !== 'overview' && activeTab !== 'appointments' && activeTab !== 'patients' && activeTab !== 'billing' && activeTab !== 'reports' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
               <p className="text-gray-600">This section is under development...</p>

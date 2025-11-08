@@ -12,6 +12,14 @@ A modern, professional doctor portal for Cura Hospitals Bengaluru.
 - 📱 Mobile-friendly design
 - 🏥 Professional healthcare-themed interface
 - 🔔 Success and error notifications
+- 📅 Appointment management and tracking
+- 📋 Medical form creation and viewing
+- 💰 **Billing Management System** (NEW)
+  - View all patient bills with detailed information
+  - Track payment status (Paid, Pending, Overdue)
+  - Search and filter bills by multiple criteria
+  - Comprehensive bill details with breakdown
+  - Real-time statistics dashboard
 
 ## Getting Started
 
@@ -66,19 +74,40 @@ npm run build
 cura-doctor-portal/
 ├── src/
 │   ├── components/
-│   │   └── LoginPage.jsx
+│   │   ├── LoginPage.jsx
+│   │   ├── Dashboard.jsx
+│   │   ├── BillingDashboard.jsx (NEW)
+│   │   ├── BillDetailsModal.jsx (NEW)
+│   │   ├── FormSelector.jsx
+│   │   ├── FormViewer.jsx
+│   │   └── MedicalFormCanvas.jsx
+│   ├── lib/
+│   │   └── supabaseClient.js
 │   ├── App.jsx
 │   ├── main.jsx
 │   └── index.css
 ├── index.html
 ├── package.json
+├── DATABASE_SETUP.md
+├── BILLING_FEATURE.md (NEW)
 └── vite.config.js
 ```
 
+## Documentation
+
+- **`DATABASE_SETUP.md`** - Database schema and setup instructions
+- **`BILLING_FEATURE.md`** - Comprehensive billing feature documentation
+- **`MEDICAL_FORMS_SETUP.md`** - Medical forms configuration
+- **`APPOINTMENTS_INTEGRATION.md`** - Appointment system integration
+
 ## Future Enhancements
 
-- Dashboard for doctors
-- Patient management
-- Appointment scheduling
-- Medical records access
-- Prescription management
+- ✅ Dashboard for doctors (Completed)
+- ✅ Appointment management (Completed)
+- ✅ Medical records/forms (Completed)
+- ✅ Billing management (Completed)
+- 🔄 Patient management portal
+- 🔄 Prescription management
+- 🔄 Payment processing integration
+- 🔄 Analytics and reporting
+- 🔄 Mobile app integration
